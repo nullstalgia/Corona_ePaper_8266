@@ -1,0 +1,142 @@
+esphome:
+  name: corona_epaper
+  platform: ESP8266
+  board: d1_mini
+wifi:
+  ssid: "AAAAAAAAAAAAAAAAA"
+  password: "AAAAAAAAAAAAAAAAA"
+  fast_connect: true
+  manual_ip:
+    static_ip: 192.168.X.X
+    gateway: 196.168.X.X
+    subnet: 255.255.255.0
+ 
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Corona Epaper Fallback Hotspot"
+    password: "AAAAAAAAAAAAAAAAA"
+
+captive_portal:
+
+    #switch:
+    #- platform: gpio
+    #  pin: D5
+    # id: paper_reset
+    #  restore_mode: ALWAYS_ON
+
+font:
+  - file: "Roboto-Regular.ttf"
+    id: roboto
+    size: 30
+
+spi:
+  clk_pin: D6
+  mosi_pin: D1
+
+ 
+display:
+  - platform: waveshare_epaper
+    id: paper
+    cs_pin: D7
+    dc_pin: D2
+    reset_pin: D5
+    model: 4.20in
+    update_interval: 10min
+    pages:
+      - id: refreshing
+        lambda: |-
+            it.print(0, 10, id(roboto), "Connecting to Wifi...");
+      - id: data_page
+        lambda: |-
+          it.strftime(0, 35, id(roboto), TextAlign::BASELINE_LEFT, "As of: %I:%M%p", id(esptime).now());
+          it.printf(0, 70, id(roboto), "US Confirmed:");
+          it.printf(0, 100, id(roboto), "US Deaths:");
+          it.printf(0, 130, id(roboto), "US Current:");
+          it.printf(0, 160, id(roboto), "US Recovered:");
+          
+          it.printf(0, 190, id(roboto), "World Confirmed:");
+          it.printf(0, 220, id(roboto), "World Deaths:");
+          it.printf(0, 250, id(roboto), "World Current:");
+          it.printf(0, 280, id(roboto), "World Recovered:");
+          
+          it.printf(250, 70, id(roboto), "%g", id(us_confirmed).state);
+          it.printf(250, 100, id(roboto), "%g", id(us_deaths).state);
+          it.printf(250, 130, id(roboto), "%g", id(us_current).state);
+          it.printf(250, 160, id(roboto), "%g", id(us_recovered).state);
+          
+          it.printf(250, 190, id(roboto), "%g", id(worldwide_confirmed).state);
+          it.printf(250, 220, id(roboto), "%g", id(worldwide_deaths).state);
+          it.printf(250, 250, id(roboto), "%g", id(worldwide_current).state);
+          it.printf(250, 280, id(roboto), "%g", id(worldwide_recovered).state);
+          
+          it.printf(260, 23, id(roboto), "%g°F", id(temp).state);
+    
+
+
+sensor:
+  - platform: homeassistant
+    entity_id: sensor.us_coronavirus_confirmed
+    id: us_confirmed
+    internal: true
+  - platform: homeassistant
+    entity_id: sensor.us_coronavirus_deaths
+    id: us_deaths
+    internal: true
+  - platform: homeassistant
+    entity_id: sensor.us_coronavirus_current
+    id: us_current
+    internal: true
+  - platform: homeassistant
+    entity_id: sensor.us_coronavirus_recovered
+    id: us_recovered
+    internal: true
+    
+  - platform: homeassistant
+    entity_id: sensor.worldwide_coronavirus_confirmed
+    id: worldwide_confirmed
+    internal: true
+  - platform: homeassistant
+    entity_id: sensor.worldwide_coronavirus_deaths
+    id: worldwide_deaths
+    internal: true
+  - platform: homeassistant
+    entity_id: sensor.worldwide_coronavirus_current
+    id: worldwide_current
+    internal: true
+  - platform: homeassistant
+    entity_id: sensor.worldwide_coronavirus_recovered
+    id: worldwide_recovered
+    internal: true
+    
+  - platform: homeassistant
+    entity_id: sensor.temperature
+    id: temp
+    internal: true
+    on_value:
+      then:
+          #- switch.turn_on: paper_reset
+      - delay: 1000ms
+      - display.page.show: data_page
+      - component.update: paper
+      - deep_sleep.enter: deep_sleep_1
+
+
+deep_sleep:
+  id: deep_sleep_1
+  run_duration: 60s
+  sleep_duration: 60min
+
+time:
+  - platform: homeassistant
+    id: esptime
+       
+
+
+      
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+
+ota:
